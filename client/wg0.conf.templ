@@ -1,0 +1,11 @@
+[Interface]
+Address = 10.13.13.2/24, fd00:13:13:13::2/64
+ListenPort = 51880
+PrivateKey = client/pri.key
+
+[Peer]
+PublicKey = server/pub.key
+PresharedKey = server/psk.key
+Endpoint = your.domain:51880
+AllowedIPs = 10.13.13.0/24, fd00:13:13:13::0/64
+PersistentKeepalive = 30
