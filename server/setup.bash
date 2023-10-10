@@ -76,7 +76,6 @@ services:
   dynv6:
     build: ./build/dynv6
     container_name: dynv6
-    privileged: true
     network_mode: host
     environment:
       - ZONE=( your.zone ) #set dynv6 Zone
