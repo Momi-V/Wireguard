@@ -17,10 +17,9 @@ cat <<'EOL' | crontab -
 */5 * * * * bash /var/rprox/forward.bash
 EOL
 
-mkdir -p build/caddy
 mkdir -p build/wireguard
 
-cat <<'EOL' > build/caddy/Caddyfile
+cat <<'EOL' > ./Caddyfile
 {
   email    your@mail.com
   key_type p384
@@ -40,15 +39,8 @@ prefix2.your.domain:port {
   reverse_proxy https://intern:port #http:// for non-TLS, https:// for trusted cert
 }
 EOL
-nano build/caddy/Caddyfile
-cat build/caddy/Caddyfile
-
-cat <<'EOL' > build/caddy/Dockerfile
-FROM caddy:alpine
-
-ADD ./Caddyfile /etc/caddy/Caddyfile
-EOL
-cat build/caddy/Dockerfile
+nano ./Caddyfile
+cat ./Caddyfile
 
 nano wg0.conf
 mv wg0.conf build/wireguard
@@ -74,11 +66,12 @@ services:
     restart: unless-stopped
 
   caddy:
-    build: ./build/caddy
+    image: caddy:alpine
     container_name: caddy
     privileged: true
     network_mode: host
     volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     restart: unless-stopped
