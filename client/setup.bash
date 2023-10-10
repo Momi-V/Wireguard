@@ -68,7 +68,6 @@ services:
   caddy:
     image: caddy:alpine
     container_name: caddy
-    privileged: true
     network_mode: host
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
