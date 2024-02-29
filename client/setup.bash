@@ -8,61 +8,47 @@ cat <<'EOL' > /etc/modules-load.d/wireguard.conf
 wireguard
 EOL
 
-wget "https://raw.githubusercontent.com/HPPinata/Wireguard/main/client/forward.bash"
+curl -O https://raw.githubusercontent.com/HPPinata/Wireguard/main/client/forward.bash
 nano forward.bash
 chmod +x forward.bash
 bash forward.bash
 
-cat <<'EOL' | crontab -
-*/5 * * * * bash /var/rprox/forward.bash
-EOL
-
-mkdir -p build/wireguard
-
-cat <<'EOL' > ./Caddyfile
-{
-  email    your@mail.com
-  key_type p384
-  #acme_ca  https://acme-staging-v02.api.letsencrypt.org/directory
-  #local_certs
-}
-
-prefix.your.domain:port {
-  reverse_proxy https://intern:port {
-    transport http {
-      tls_insecure_skip_verify #if internal cert is self signed
-    }
-  }
-}
-
-prefix2.your.domain:port {
-  reverse_proxy https://intern:port #http:// for non-TLS, https:// for trusted cert
-}
-EOL
+curl -O https://raw.githubusercontent.com/HPPinata/Wireguard/main/client/Caddyfile
 nano ./Caddyfile
 cat ./Caddyfile
 
 nano wg0.conf
-mv wg0.conf build/wireguard
+mkdir -p config-prox/wg_confs
+mv wg0.conf config-prox/wg_confs/wg-base.conf
 
-cat <<'EOL' > build/wireguard/Dockerfile
-FROM alpine:latest
+mkdir config
+cat <<'EOL' > config/config.yml
+advanced:
+  log_level: trace
 
-RUN apk add --no-cache wireguard-tools
+core:
+  admin_user: admin@admin.net
+  admin_password: changeME #your password
+  import_existing: false
 
-ADD ./wg0.conf /etc/wireguard/
-
-CMD ["sh", "-c", "wg-quick up wg0; sleep infinity"]
+web:
+  external_url: https://your.external.url #replace with the external URL
+  request_logging: true
 EOL
-cat build/wireguard/Dockerfile
+nano config/config.yml
 
 cat <<'EOL' > compose.yml
 services:
-  wireguard:
-    build: ./build/wireguard
-    container_name: wireguard
-    privileged: true
+  wireguard-prox:
+    image: linuxserver/wireguard:latest
+    container_name: wireguard-prox
+    cap_add:
+      - NET_ADMIN
     network_mode: host
+    volumes:
+      - ./config-prox:/config
+    environment:
+      - TZ=Europe/Berlin
     restart: unless-stopped
 
   caddy:
@@ -73,36 +59,44 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    environment:
+      - TZ=Europe/Berlin
+    restart: unless-stopped
+
+  wg-portal:
+    image: wgportal/wg-portal:latest
+    container_name: wg-portal
+    cap_add:
+      - NET_ADMIN
+    network_mode: host
+    volumes:
+      - wg_data:/app/data
+      - ./config:/app/config
+    environment:
+      - TZ=Europe/Berlin
     restart: unless-stopped
 
 volumes:
   caddy_data:
   caddy_config:
+  wg_data:
 EOL
 cat compose.yml
 
 cat <<'EOL' > /var/rprox/update.bash
 #!/bin/bash
 cd /var/rprox
-docker-compose pull
-docker-compose build --pull
-docker-compose up -dV
+docker compose pull
+docker compose build --pull
+docker compose up -dV
 docker system prune -a -f --volumes
 EOL
 chmod +x /var/rprox/update.bash
 
-cat <<'EOL' > /etc/systemd/system/proxy-compose.service
-[Unit]
-Description=Start Reverse-Proxy Container
-After=network-online.target docker.service
+cat <<'EOL' | crontab -
+SHELL=/bin/bash
+BASH_ENV=/etc/profile
 
-[Service]
-Type=oneshot
-ExecStart=bash -c '/var/rprox/update.bash'
-ExecStop=bash -c '/bin/docker-compose down -f /var/rprox/compose.yml'
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
+@reboot /var/rprox/update.bash
+*/5 * * * * /var/rprox/forward.bash
 EOL
-systemctl enable /etc/systemd/system/proxy-compose.service
