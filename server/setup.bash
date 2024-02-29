@@ -8,68 +8,25 @@ cat <<'EOL' > /etc/modules-load.d/wireguard.conf
 wireguard
 EOL
 
-wget "https://raw.githubusercontent.com/HPPinata/Wireguard/main/server/forward.bash"
+curl -O "https://raw.githubusercontent.com/HPPinata/Wireguard/main/server/forward.bash"
 nano forward.bash
 chmod +x forward.bash
 bash forward.bash
 
-cat <<'EOL' | crontab -
-*/5 * * * * bash /var/rprox/forward.bash
-EOL
-
 mkdir -p build/dynv6
 mkdir -p build/wireguard
 
-cat <<'EOL' > build/dynv6/dyndns.bash
-#!/bin/bash
-
-OLD4=$(cat tempaddr4)
-NEW4=$(curl api.ipify.org)
-if [ "$OLD4" != "$NEW4" ]; then
-  for Z in ${ZONE[@]}; do
-    curl -4 -L "https://ipv4.dynv6.com/api/update?zone=$Z&ipv4=auto&token=$TK"
-  done
-fi
-
-OLD6=$(cat tempaddr6)
-NEW6=$(curl api64.ipify.org)
-if [ "$OLD6" != "$NEW6" ]; then
-  for Z in ${ZONE[@]}; do
-    curl -6 -L "https://ipv6.dynv6.com/api/update?zone=$Z&ipv6=auto&ipv6prefix=auto&token=$TK"
-  done
-fi
-
-echo $NEW4 > tempaddr4
-echo $NEW6 > tempaddr6
-sleep 300
-EOL
+curl -O https://raw.githubusercontent.com/HPPinata/Wireguard_P/wire-ui/server/dynv6/dyndns.bash
+mv dyndns.bash build/dynv6
 cat build/dynv6/dyndns.bash
 
-cat <<'EOL' > build/dynv6/Dockerfile
-FROM alpine:latest
-
-RUN apk add --no-cache curl bash
-
-ADD ./dyndns.bash /
-RUN chmod +x ./dyndns.bash
-
-CMD ["./dyndns.bash"]
-EOL
+curl -O https://raw.githubusercontent.com/HPPinata/Wireguard/main/server/dynv6/Dockerfile
+mv Dockerfile build/dynv6
 cat build/dynv6/Dockerfile
 
 nano wg0.conf
-mv wg0.conf build/wireguard
-
-cat <<'EOL' > build/wireguard/Dockerfile
-FROM alpine:latest
-
-RUN apk add --no-cache wireguard-tools
-
-ADD ./wg0.conf /etc/wireguard/
-
-CMD ["sh", "-c", "wg-quick up wg0; sleep infinity"]
-EOL
-cat build/wireguard/Dockerfile
+mkdir -p config/wg_confs
+mv wg0.conf config/wg_confs/wg-base.conf
 
 cat <<'EOL' > compose.yml
 services:
@@ -83,10 +40,13 @@ services:
     restart: unless-stopped
 
   wireguard:
-    build: ./build/wireguard
+    image: linuxserver/wireguard:latest
     container_name: wireguard
-    privileged: true
+    cap_add:
+      - NET_ADMIN
     network_mode: host
+    volumes:
+      - ./config:/config
     restart: unless-stopped
 EOL
 nano compose.yml
@@ -102,20 +62,12 @@ docker system prune -a -f --volumes
 EOL
 chmod +x /var/rprox/update.bash
 
-cat <<'EOL' > /etc/systemd/system/proxy-compose.service
-[Unit]
-Description=Start Reverse-Proxy Container
-After=network-online.target docker.service
+cat <<'EOL' | crontab -
+SHELL=/bin/bash
+BASH_ENV=/etc/profile
 
-[Service]
-Type=oneshot
-ExecStart=bash -c '/var/rprox/update.bash'
-ExecStop=bash -c '/bin/docker compose down -f /var/rprox/compose.yml'
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
+@reboot /var/rprox/update.bash
+*/5 * * * * /var/rprox/forward.bash
 EOL
-systemctl enable /etc/systemd/system/proxy-compose.service
 
 reboot
