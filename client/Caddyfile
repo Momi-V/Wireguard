@@ -1,0 +1,18 @@
+{
+  email    your@mail.com
+  key_type p384
+  #acme_ca  https://acme-staging-v02.api.letsencrypt.org/directory
+  #local_certs
+}
+
+prefix.your.domain:port {
+  reverse_proxy https://intern:port {
+    transport http {
+      tls_insecure_skip_verify #if internal cert is self signed
+    }
+  }
+}
+
+prefix2.your.domain:port {
+  reverse_proxy http://intern:port #http:// for non-TLS, https:// for trusted cert
+}
