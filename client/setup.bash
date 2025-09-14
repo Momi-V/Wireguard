@@ -8,12 +8,12 @@ cat <<'EOL' > /etc/modules-load.d/wireguard.conf
 wireguard
 EOL
 
-curl -O https://raw.githubusercontent.com/HPPinata/Wireguard/main/client/forward.bash
+curl -O https://raw.githubusercontent.com/Momi-V/Wireguard/main/client/forward.bash
 nano forward.bash
 chmod +x forward.bash
 bash forward.bash
 
-curl -O https://raw.githubusercontent.com/HPPinata/Wireguard/main/client/Caddyfile
+curl -O https://raw.githubusercontent.com/Momi-V/Wireguard/main/client/Caddyfile
 nano ./Caddyfile
 cat ./Caddyfile
 

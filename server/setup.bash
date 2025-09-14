@@ -8,7 +8,7 @@ cat <<'EOL' > /etc/modules-load.d/wireguard.conf
 wireguard
 EOL
 
-curl -O "https://raw.githubusercontent.com/HPPinata/Wireguard/main/server/forward.bash"
+curl -O "https://raw.githubusercontent.com/Momi-V/Wireguard/main/server/forward.bash"
 nano forward.bash
 chmod +x forward.bash
 bash forward.bash
@@ -16,11 +16,11 @@ bash forward.bash
 mkdir -p build/dynv6
 mkdir -p build/wireguard
 
-curl -O https://raw.githubusercontent.com/HPPinata/Wireguard_P/wire-ui/server/dynv6/dyndns.bash
+curl -O https://raw.githubusercontent.com/Momi-V/Wireguard_P/wire-ui/server/dynv6/dyndns.bash
 mv dyndns.bash build/dynv6
 cat build/dynv6/dyndns.bash
 
-curl -O https://raw.githubusercontent.com/HPPinata/Wireguard/main/server/dynv6/Dockerfile
+curl -O https://raw.githubusercontent.com/Momi-V/Wireguard/main/server/dynv6/Dockerfile
 mv Dockerfile build/dynv6
 cat build/dynv6/Dockerfile
 
